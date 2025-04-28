@@ -167,7 +167,7 @@ export default function ProfileScreen() {
 
         )}
       </View>
-a
+
       <View style={styles.logoutButton}>
         <TouchableOpacity style={styles.logoutTouchable} onPress={handleLogout}>
           <Text style={styles.logoutText}>Logout</Text>
