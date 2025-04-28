@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import {SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -12,6 +13,8 @@ export default function HomeScreen({ route }: { route: { params: { username: str
   const { username, address, email, phone } = route.params;
 
   return (
+    <SafeAreaProvider>
+    <SafeAreaView>
     <ScrollView contentContainerStyle={styles.container}>
       <View
         style={styles.TopContainer}
@@ -52,6 +55,8 @@ export default function HomeScreen({ route }: { route: { params: { username: str
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -60,7 +65,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: '#ffffff',
     alignItems: 'center',
-    paddingVertical: 20,
+    // paddingVertical: 0,
   },
   title: {
     fontSize: 24,
