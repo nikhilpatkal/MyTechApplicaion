@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, Image, Alert, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, TouchableOpacity, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,8 +12,8 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
 
-  const [userData, setUserData] = useState<{ name: string; email: string; phone: string } | null>(null);
-  const [profileImage, setProfileImage] = useState<string | null>(null); // Profile image state
+  const [userData, setUserData] = useState<{ username: string; email: string; phone: string } | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -25,16 +25,15 @@ export default function ProfileScreen() {
 
   const fetchUserData = async () => {
     try {
-      const name = await AsyncStorage.getItem('name');
-      const email = await AsyncStorage.getItem('email');
-      const phone = await AsyncStorage.getItem('phone');
-      const profileImage = await AsyncStorage.getItem('profileImage'); // Fetch profile image
-      if (name && email && phone) {
-        setUserData({ name, email, phone });
-        setName(name);
+      const storedUser = await AsyncStorage.getItem("user");
+      if (storedUser) {
+        const { username, email, phone } = JSON.parse(storedUser);
+        const profileImage = await AsyncStorage.getItem('profileImage');
+        setUserData({ username, email, phone });
+        setName(username);
         setEmail(email);
         setPhone(phone);
-        setProfileImage(profileImage); // Set the profile image if available
+        setProfileImage(profileImage);
       }
     } catch (error) {
       console.error('Failed to load user data', error);
@@ -44,14 +43,11 @@ export default function ProfileScreen() {
   const handleSaveProfile = async () => {
     try {
       if (name && email && phone) {
-        await AsyncStorage.setItem('name', name);
-        await AsyncStorage.setItem('email', email);
-        await AsyncStorage.setItem('phone', phone);
-        if (profileImage) {
-          await AsyncStorage.setItem('profileImage', profileImage); // Save the image
-        }
+        const updatedUser = { username: name, email, phone };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        if (profileImage) await AsyncStorage.setItem('profileImage', profileImage);
         setIsEditing(false);
-        fetchUserData(); // Update the UI with the new information
+        fetchUserData();
         Alert.alert('Success', 'Profile updated successfully!');
       } else {
         Alert.alert('Error', 'Please fill in all fields');
@@ -63,63 +59,47 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.clear();
-            navigation.replace('Login');
-          },
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          navigation.replace('Login');
         },
-      ],
-      { cancelable: true }
-    );
+      },
+    ]);
   };
 
   const handleImageUpload = () => {
-    console.log('Image upload clicked');  // Debugging log to confirm function call
-    launchImageLibrary(
-      { mediaType: 'photo', includeBase64: true, quality: 0.5 },
-      (response) => {
-        if (response.didCancel) {
-          console.log('User cancelled image picker');
-        } else if (response.errorCode) {
-          console.log('ImagePicker Error: ', response.errorMessage);
-        } else {
-          // Check if assets exists and has at least one item
-          if (response.assets && response.assets.length > 0) {
-            const uri: string | undefined = response.assets[0].uri;
-            if (uri) {
-              setProfileImage(uri);
-              AsyncStorage.setItem('profileImage', uri); // Save the image URI
-              console.log('Profile image set:', uri);  // Debugging log
-            } else {
-              console.log('Image URI is undefined');
-              setProfileImage(null); // You can reset or handle the null case
-              AsyncStorage.removeItem('profileImage');
-            }
-          } else {
-            console.log('No assets found in the response');
-            setProfileImage(null); // Reset if no assets
-            AsyncStorage.removeItem('profileImage');
-          }
+    launchImageLibrary({ mediaType: 'photo', includeBase64: true, quality: 0.5 }, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+      } else {
+        const uri: string | undefined = response.assets?.[0]?.uri;
+        if (uri) {
+          setProfileImage(uri);
+          AsyncStorage.setItem('profileImage', uri);
+          console.log('Profile image set:', uri);
         }
       }
-    );
+    });
   };
-
-
-
 
   if (!userData) {
     return (
       <View style={styles.container}>
+      <TouchableOpacity
+      style={styles.backButton}
+      onPress={() => navigation.goBack()}
+    >
+      <Ionicons name="arrow-back" size={24} color="#333" />
+    </TouchableOpacity>
+      <View style={styles.container}>
         <Text>Loading Profile...</Text>
+      </View>
       </View>
     );
   }
@@ -135,56 +115,63 @@ export default function ProfileScreen() {
 
       <TouchableOpacity onPress={handleImageUpload}>
         <Image
-          source={profileImage ? { uri: profileImage } : require('../../assets/images/profile-image.png')}
+          source={
+            profileImage
+              ? { uri: profileImage }
+              : require("../../assets/images/profile-image.png")
+          }
           style={styles.profileImage}
         />
       </TouchableOpacity>
 
       {isEditing ? (
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-        />
+        <>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter your name"
+          />
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Enter your email"
+            keyboardType="email-address"
+          />
+          <TextInput
+            style={styles.input}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="Enter your phone number"
+            keyboardType="phone-pad"
+          />
+        </>
       ) : (
-        <Text style={styles.info}>{userData.name}</Text>
-      )}
-
-      {isEditing ? (
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Enter your email"
-          keyboardType="email-address"
-        />
-      ) : (
-        <Text style={styles.info}>{userData.email}</Text>
-      )}
-
-      {isEditing ? (
-        <TextInput
-          style={styles.input}
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="Enter your phone number"
-          keyboardType="phone-pad"
-        />
-      ) : (
-        <Text style={styles.info}>{userData.phone}</Text>
+        <>
+          <Text style={styles.info}>{userData.username}</Text>
+          <Text style={styles.info}>{userData.email}</Text>
+          <Text style={styles.info}>{userData.phone}</Text>
+        </>
       )}
 
       <View style={styles.saveButton}>
         {isEditing ? (
-          <Button title="Save" color="#5cb85c" onPress={handleSaveProfile} />
+          <TouchableOpacity style={styles.saveTouchable} onPress={handleSaveProfile}>
+            <Text style={styles.saveText}>Save</Text>
+          </TouchableOpacity>
         ) : (
-          <Button title="Edit Profile" color="#4CAF50" onPress={() => setIsEditing(true)} />
+          <TouchableOpacity style={styles.editProfileTouchable} onPress={() => setIsEditing(true)}>
+            <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+
         )}
       </View>
-
+a
       <View style={styles.logoutButton}>
-        <Button title="Logout" color="#ff5c5c" onPress={handleLogout} />
+        <TouchableOpacity style={styles.logoutTouchable} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -229,6 +216,28 @@ const styles = StyleSheet.create({
     marginTop: 20,
     width: '60%',
   },
+  saveTouchable: {
+    backgroundColor: '#5cb85c',
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  saveText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  editProfileTouchable: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  editProfileText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   logoutButton: {
     marginTop: 30,
     width: '60%',
@@ -242,5 +251,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
+  },
+  logoutTouchable: {
+    backgroundColor: '#ff5c5c',
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

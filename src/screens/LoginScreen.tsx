@@ -23,25 +23,30 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (
-      username.toLocaleLowerCase() === "admin" &&
-      password.toLocaleLowerCase() === "admin"
-    ) {
-      await AsyncStorage.setItem("name", "John Doe");
-      await AsyncStorage.setItem("email", "john@example.com");
-      await AsyncStorage.setItem("phone", "9876543210");
-        // Passing all the data to the Home screen
-        navigation.replace("Home", {
-          username,
-          name: "John Doe",
-          email: "john@example.com",
-          phone: "9876543210",
-        }); // If valid, go to Home
-    } else {
-      Alert.alert(
-        "Invalid Credentials",
-        "Please check your username and password."
-      );
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
+      if (!storedUser) {
+        Alert.alert("Error", "No account found. Please sign up.");
+        return;
+      }
+
+      const { username, email: storedEmail, password: storedPassword,phone:phone,address:address } = JSON.parse(storedUser);
+      console.log(storedPassword,'data that store in storage of the signup user')
+      if (username === username && password === storedPassword) {
+        // Save login state
+        await AsyncStorage.setItem("isLoggedIn", "true");
+
+        navigation.replace("Home",{
+                  username,
+                  address:address,
+                  email: storedEmail,
+                  phone: phone,
+                });
+      } else {
+        Alert.alert("Error", "Invalid username or password.");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
     }
   };
 
@@ -62,6 +67,12 @@ export default function LoginScreen() {
         onChangeText={setPassword}
       />
       <Button title="Login" onPress={handleLogin} />
+      <View style={styles.signupContainer}>
+        <Text>Don't have an account?</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
+          <Text style={styles.signupText}> Signup Here</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -80,5 +91,14 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     marginBottom: 10,
+  },
+  signupContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  signupText: {
+    color: "#4e8cff",
+    fontWeight: "bold",
   },
 });
